@@ -25,6 +25,7 @@ class NoteIn(BaseModel):
 class DecideIn(BaseModel):
     decision: str
     comment: str = ""
+    final_price: Optional[float] = None
 
 class WsItem(BaseModel):
     desc: str
@@ -72,7 +73,7 @@ def post_note(n: NoteIn):
 
 @app.post("/notes/{note_id}/decide")
 def post_decide(note_id: int, d: DecideIn):
-    return _try(db.decide_note, note_id, d.decision, d.comment)
+    return _try(db.decide_note, note_id, d.decision, d.comment, d.final_price)
 
 @app.post("/notes/{note_id}/delete")
 def post_note_delete(note_id: int):

@@ -5,7 +5,7 @@
 
 加好之后，你的 AI 在 claude.ai 任何对话里都能：查余额、记账、递条子、交工资单、往暗格藏惊喜。
 
-## 四个大坑（每个都能卡一下午，我们替你踩过了）
+## 四个大坑
 
 **坑① MCP 返回 421**
 python 版 MCP SDK 有 DNS-rebinding 保护，nginx 转发时 `Host` 头必须写死成后端自己的地址（`proxy_set_header Host 127.0.0.1:8007;`），不能用 `$host`。

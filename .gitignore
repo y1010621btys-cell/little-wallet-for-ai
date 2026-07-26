@@ -4,3 +4,6 @@
 venv/
 profiles/
 __pycache__/
+.tb_cookies_cache
+*_cmd.txt
+*_result.txt

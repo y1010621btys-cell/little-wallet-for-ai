@@ -9,7 +9,8 @@ drive.py 的 shot 是「开页→截图→关」的一次性动作，扛不住�
 
 用法：
     ./venv/bin/python login_driver.py <platform>
-    # platform 见下面 PLATFORMS，例如 taobao / meituan
+    # platform 见下面 PLATFORMS，例如 taobao
+    # 海外 VPS 短信区号会默认 +1 收不到码，直接走扫码登录绕开（见 04 教程）
 
 投指令（另一个终端 / AI 的 shell 工具）：
     echo -n "SNAP"        > /root/browser/<platform>_cmd.txt   # 重新截图看现况
@@ -46,15 +47,6 @@ PLATFORMS = {
         "pre": ["短信登录"],        # 进页面先点的按钮（切到短信 tab）
         "send": ["获取验证码", "发送验证码", "获取短信校验码"],
         "submit": ["登录", "确定"],
-    },
-    "meituan": {
-        "login_url": "https://h5.waimai.meituan.com/waimai/mindex/poipicker",
-        "desktop": False,           # 美团外卖 H5，手机 UA
-        "stealth": False,
-        "pre": ["选择城市"],        # 一点就撞登录墙，正好把登录页顶出来
-        "send": ["发送验证码", "重新发送"],
-        "submit": ["登录"],
-        "need_agree": True,         # 协议 checkbox 必须勾，否则点登录弹「请先勾选」
     },
 }
 

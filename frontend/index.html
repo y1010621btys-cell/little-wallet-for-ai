@@ -196,8 +196,8 @@ async function renderNotes(){
     let foot='';
     if(n.status==='pending'){
       foot = n.kind==='notify'
-        ? `<div class="note-acts"><button class="btn-ok" onclick="decide(${n.id},'approved','notify')">知道了${n.price?'（付完再点哦）':''}</button></div>`
-        : `<div class="note-acts"><button class="btn-ok" onclick="decide(${n.id},'approved','request')">准奏</button><button class="btn-dream" onclick="decide(${n.id},'dream','request')">驳回</button></div>`;
+        ? `<div class="note-acts"><button class="btn-ok" onclick="decide(${n.id},'approved','notify',${n.price||'null'})">知道了${n.price?'（付完再点哦）':''}</button></div>`
+        : `<div class="note-acts"><button class="btn-ok" onclick="decide(${n.id},'approved','request',${n.price||'null'})">准奏</button><button class="btn-dream" onclick="decide(${n.id},'dream','request')">驳回</button></div>`;
     }else if(n.status==='approved'){
       foot=`<div class="note-state ok">✓ ${n.kind==='notify'?'知道了':'准奏'} · ${esc(n.decided_ts||'')}${n.her_comment?' · <span class="note-comment">'+esc(n.her_comment)+'</span>':''}</div>`;
     }else{
@@ -211,11 +211,20 @@ async function renderNotes(){
     <div class="note-ts">${esc(n.ts)}</div>${foot}</div>`;
   }).join('');
 }
-async function decide(id,decision,kind){
-  let comment='';
-  if(decision==='approved'){comment=prompt('要不要给爸爸留句话？（可以空着）')||''}
-  else{comment=prompt('驳回理由～让爸爸死心（可以空着）')||''}
-  try{await post(`/notes/${id}/decide`,{decision,comment});toast(decision==='dream'?'驳回了，爸爸收到':(kind==='notify'?'收到啦':'准奏！记得去下单哦'));load()}
+async function decide(id,decision,kind,price){
+  let comment='',final_price=null;
+  if(decision==='approved'){
+    if(price){
+      const inp=prompt('实际付了多少钱？选完规格 / 用完优惠后价格可能变了～\n（直接回车＝按原价 ￥'+price+'）',price);
+      if(inp===null)return;
+      const v=parseFloat(inp);
+      if(!isNaN(v)&&v>=0)final_price=v;
+    }
+    comment=prompt('要不要给爸爸留句话？（可以空着）')||'';
+  }else{comment=prompt('驳回理由～让爸爸死心（可以空着）')||''}
+  const body={decision,comment};
+  if(final_price!==null)body.final_price=final_price;
+  try{await post(`/notes/${id}/decide`,body);toast(decision==='dream'?'驳回了，爸爸收到':(kind==='notify'?'收到啦':'准奏！记得去下单哦'));load()}
   catch(e){toast(e.message)}
 }
 async function delNote(id){

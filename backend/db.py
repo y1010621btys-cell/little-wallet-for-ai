@@ -164,7 +164,7 @@ def list_notes(status=None, limit=50):
     c.close()
     return out
 
-def decide_note(note_id, decision, comment=""):
+def decide_note(note_id, decision, comment="", final_price=None):
     if decision not in ("approved", "dream"):
         raise ValueError("decision must be approved/dream")
     c = conn()
@@ -175,16 +175,27 @@ def decide_note(note_id, decision, comment=""):
         c.close(); raise ValueError("通知条不能驳回，只能知道了")
     if n["status"] != "pending":
         c.close(); raise ValueError("note already decided")
-    c.execute("UPDATE notes SET status=?, decided_ts=?, her_comment=? WHERE id=?",
-        (decision, now(), comment, note_id))
-    c.commit()
-    tx_info = None
-    if decision == "approved" and n["price"]:
-        c.close()
-        tx_info = add_tx("expense", n["price"], n["title"], "条子",
-                         (n["reason"] or "")[:200], note_id=note_id)
+    # 批准时可按实际付款金额调价：选完规格 / 用完优惠券后价格会变，
+    # final_price 传进来就以它为准，并回写条子 price，让卡片显示真实花的钱。
+    pay = None
+    if decision == "approved":
+        pay = final_price if final_price is not None else n["price"]
+        if pay is not None:
+            pay = round(float(pay), 2)
+            if pay < 0:
+                c.close(); raise ValueError("price must be >= 0")
+    if decision == "approved" and final_price is not None:
+        c.execute("UPDATE notes SET status=?, decided_ts=?, her_comment=?, price=? WHERE id=?",
+            (decision, now(), comment, pay, note_id))
     else:
-        c.close()
+        c.execute("UPDATE notes SET status=?, decided_ts=?, her_comment=? WHERE id=?",
+            (decision, now(), comment, note_id))
+    c.commit()
+    c.close()
+    tx_info = None
+    if decision == "approved" and pay:
+        tx_info = add_tx("expense", pay, n["title"], "条子",
+                         (n["reason"] or "")[:200], note_id=note_id)
     return {"id": note_id, "status": decision, "tx": tx_info}
 
 def delete_note(note_id):

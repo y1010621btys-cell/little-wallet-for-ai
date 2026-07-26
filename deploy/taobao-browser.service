@@ -1,0 +1,26 @@
+# 常驻 headed Chromium + CDP，供 AI 连进去开淘宝。
+# 关键点：headed（不是 headless）跑在 xvfb 虚拟屏里 → 反风控软；
+# 开着调试端口 9223，脚本连进去操作完就断开、浏览器不关 → 登录态永不丢。
+#
+# 装好放 /etc/systemd/system/，然后：
+#   systemctl daemon-reload && systemctl enable --now taobao-browser
+#
+# chrome 路径按你 playwright 装的实际版本改（ls ~/.cache/ms-playwright/）。
+# MemoryMax 视机器调；1G 小机务必先加 swap（见 04 教程）。
+[Unit]
+Description=Persistent headed Chromium for Taobao (CDP :9223)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/xvfb-run -a -s "-screen 0 1280x900x24" \
+  /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome \
+  --no-sandbox --no-first-run --no-default-browser-check \
+  --disable-dev-shm-usage \
+  --user-data-dir=/root/browser/profiles/taobao-live \
+  --remote-debugging-port=9223 --window-size=1280,860 about:blank
+MemoryMax=700M
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

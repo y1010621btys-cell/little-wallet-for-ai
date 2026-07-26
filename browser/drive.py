@@ -1,7 +1,7 @@
 """AI的眼睛和手 - VPS上的按需浏览器。
 用法:
   shot <profile> <url> <name> [wait_sec]   打开页面截图到 IMG 目录/<name>.png
-  profiles 独立保存登录态: taobao / meituan / ...（登录一次长期有效）
+  profiles 独立保存登录态: taobao / ...（登录一次长期有效）
 内存注意: 用完即退, 不常驻。"""
 import sys, time
 from playwright.sync_api import sync_playwright
