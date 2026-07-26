@@ -27,7 +27,7 @@ TA 干活挣钱 · 你来定价 · TA 想给你买东西时递小条子<br>
 - 🎯 **存钱目标** —— 纪念日基金进度条
 - 🔒 **暗格** —— 页面只显示件数，内容只有 TA 的工具够得着。惊喜需要一个藏身处
 - 🔌 **MCP 端点** —— claude.ai / Claude Code 加个连接器就能让 TA 直接记账（14 个工具）
-- 🥤 **真的能买到东西** —— 麦当劳/瑞幸官方 MCP 中转教程 + 淘宝的浏览器方案（常驻浏览器 + 加购接口绕验证码）
+- 🥤 **真的能买到东西** —— 麦当劳/瑞幸官方 MCP 中转教程 + 淘宝的浏览器方案（常驻浏览器 + 加购接口绕验证码），淘宝还能自己包成 MCP 让 AI 张口就调
 
 付款的最后一道闸门永远在人类手上：AI 下单不扣款，你付完才记账。
 
@@ -46,7 +46,7 @@ TA 干活挣钱 · 你来定价 · TA 想给你买东西时递小条子<br>
 backend/    db.py api.py mcp_server.py       钱包后端（FastAPI + SQLite + MCP）
 frontend/   index.html                        钱包页面（移动端优先，无依赖单文件）
 deploy/     *.service *.conf.example         systemd 与 nginx 配置模板
-browser/    drive.py login_driver.py tb_buy.py  常驻浏览器 + 登录驱动 + 淘宝加购（Playwright/CDP）
+browser/    drive.py login_driver.py tb_buy.py tb_mcp.py  常驻浏览器 + 登录驱动 + 淘宝加购/MCP（Playwright/CDP）
 docs/       01~04                             四篇教程
 ```
 

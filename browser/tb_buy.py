@@ -114,7 +114,14 @@ def cmd_search(query):
             encoded = urllib.request.quote(query)
             await send('Page.navigate',
                        {'url': f'https://s.taobao.com/search?q={encoded}'})
-            await asyncio.sleep(8)   # 等结果异步渲染
+            # 结果异步渲染，海外 IP 偶尔很慢——轮询等卡片出现，最多 ~36 秒
+            for _ in range(12):
+                await asyncio.sleep(3)
+                cnt = await send('Runtime.evaluate', {
+                    'expression': 'document.querySelectorAll(\'a[href*="id="]\').length',
+                    'returnByValue': True})
+                if cnt['result']['result']['value'] > 5:
+                    break
 
             js = r'''(() => {
                 const links = document.querySelectorAll('a[href*="id="]');
@@ -129,10 +136,12 @@ def cmd_search(query):
                     let img = box ? box.querySelector('img[src*="alicdn"]') : null;
                     const title = text.split('\n').find(
                         l => l.length > 10 && !l.startsWith('¥') && !/^\d/.test(l)) || '';
-                    const price = text.match(/¥\s*(\d+\.?\d*)/);
+                    const priceMatch = text.match(/¥\s*(\d+\.?\d*)/);
+                    const price = priceMatch ? priceMatch[1] : null;
+                    const imgSrc = img ? img.src : null;
+                    if (!price && !imgSrc) continue;   // 跳过账号昵称等无价无图的垃圾链接
                     items.push({id: m[1], title: title.trim().slice(0, 80),
-                                price: price ? price[1] : null,
-                                img: img ? img.src : null});
+                                price: price, img: imgSrc});
                     if (items.length >= 8) break;
                 }
                 return JSON.stringify(items);
