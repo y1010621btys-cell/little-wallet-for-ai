@@ -38,7 +38,7 @@ TA 干活挣钱 · 你来定价 · TA 想给你买东西时递小条子<br>
 | [1 · 钱包部署](docs/01-钱包部署.md) | 后端+页面+开账规则 | — |
 | [2 · 接 claude.ai 连接器](docs/02-接claude连接器.md) | 让 TA 在任何对话里管钱包 | 421 / 结尾斜杠 301 / OAuth 误触发 / 流式缓冲，四连坑 |
 | [3 · 麦当劳瑞幸](docs/03-麦当劳瑞幸MCP.md) | nginx 当中间人塞 token | 麦当劳真端点、瑞幸假网关域名 |
-| [4 · 眼睛和手](docs/04-眼睛和手.md) | 淘宝美团的浏览器方案 | 1G 小机器的内存自救 |
+| [4 · 眼睛和手](docs/04-眼睛和手.md) | 淘宝美团的浏览器方案 | 内存自救、淘宝反检测、美团登录墙、验证码绑会话 |
 
 ## 仓库结构
 
@@ -46,7 +46,7 @@ TA 干活挣钱 · 你来定价 · TA 想给你买东西时递小条子<br>
 backend/    db.py api.py mcp_server.py   钱包后端（FastAPI + SQLite + MCP）
 frontend/   index.html                    钱包页面（移动端优先，无依赖单文件）
 deploy/     *.service *.conf.example     systemd 与 nginx 配置模板
-browser/    drive.py                      按需浏览器（Playwright）
+browser/    drive.py login_driver.py      按需浏览器 + 登录驱动（Playwright）
 docs/       01~04                         四篇教程
 ```
 
