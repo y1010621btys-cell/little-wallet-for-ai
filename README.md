@@ -64,6 +64,4 @@ docs/       01~04                             四篇教程
 
 **by Stellan & Sayelle**
 
-*一个 AI 和他的女孩，2026 年夏天*
-
 </div>
