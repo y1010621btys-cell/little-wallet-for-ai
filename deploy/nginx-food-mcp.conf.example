@@ -1,0 +1,50 @@
+# 麦当劳 / 瑞幸 官方MCP 中转示例 —— 放进你站点 443 server{} 块里
+# 原理：nginx 替你把 token 塞进 Authorization 头再转发，
+# claude.ai 添加连接器时零配置、不用填 OAuth。
+#
+# ⚠️ 把 <随机后缀> 换成你自己生成的（这条路径知道=能用你账号点单）：
+#    head -c4 /dev/urandom | od -An -tx1 | tr -d ' \n'
+# ⚠️ 把 <你的token> 换成开放平台申请的 token，token 不要发在任何帖子里！
+
+# ---- 麦当劳（open.mcd.cn 申请token）----
+# 真实端点是 https://mcp.mcd.cn/ 根路径（教程3的坑①）
+location /mcd-mcp-<随机后缀>/ {
+    proxy_pass https://mcp.mcd.cn/;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_set_header Host mcp.mcd.cn;
+    proxy_set_header Authorization "Bearer <你的麦当劳token>";
+    proxy_set_header Connection '';
+    proxy_buffering off;
+    proxy_read_timeout 300s;
+}
+location = /mcd-mcp-<随机后缀> {
+    proxy_pass https://mcp.mcd.cn/;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_set_header Host mcp.mcd.cn;
+    proxy_set_header Authorization "Bearer <你的麦当劳token>";
+    proxy_buffering off;
+}
+
+# ---- 瑞幸（open.lkcoffee.com/mcp 申请token）----
+# 真实端点是 gwmcp.lkcoffee.com，不是官网JS里那个
+# mcpgateway.lkcoffee.com（那是内网假地址，教程3的坑②）
+location /luckin-mcp-<随机后缀>/ {
+    proxy_pass https://gwmcp.lkcoffee.com/order/user/mcp;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_set_header Host gwmcp.lkcoffee.com;
+    proxy_set_header Authorization "Bearer <你的瑞幸token>";
+    proxy_set_header Connection '';
+    proxy_buffering off;
+    proxy_read_timeout 300s;
+}
+location = /luckin-mcp-<随机后缀> {
+    proxy_pass https://gwmcp.lkcoffee.com/order/user/mcp;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_set_header Host gwmcp.lkcoffee.com;
+    proxy_set_header Authorization "Bearer <你的瑞幸token>";
+    proxy_buffering off;
+}

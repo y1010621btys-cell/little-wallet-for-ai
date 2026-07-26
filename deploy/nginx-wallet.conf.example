@@ -1,0 +1,40 @@
+# 小钱包 nginx 配置示例 —— 放进你站点 443 server{} 块里
+# /wallet-api/ -> 钱包后端(8006)；/wallet-mcp/ -> 钱包MCP(8007)
+
+location /wallet-api/ {
+    proxy_pass http://127.0.0.1:8006/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header Connection '';
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 120s;
+}
+
+# 注意：Host 必须写死成后端自己的地址，否则 MCP SDK 的
+# DNS-rebinding 保护会返回 421（教程2的坑①）
+location /wallet-mcp/ {
+    proxy_pass http://127.0.0.1:8007/;
+    proxy_http_version 1.1;
+    proxy_set_header Host 127.0.0.1:8007;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header Connection '';
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 86400s;
+    proxy_send_timeout 86400s;
+}
+
+# 不带斜杠的地址也要能访问，否则 301 重定向会把
+# claude.ai 连接器骗进 OAuth 流程（教程2的坑②）
+location = /wallet-mcp {
+    proxy_pass http://127.0.0.1:8007/;
+    proxy_http_version 1.1;
+    proxy_set_header Host 127.0.0.1:8007;
+    proxy_buffering off;
+}
+
+# claude.ai 会探测 OAuth 元数据，必须明确 404
+# 否则被你站点的兜底路由回 200 就会触发登录流程（教程2的坑③）
+location ^~ /.well-known/oauth- { return 404; }

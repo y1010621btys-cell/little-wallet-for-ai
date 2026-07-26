@@ -1,0 +1,12 @@
+[Unit]
+Description=Papa Wallet API
+After=network.target
+
+[Service]
+WorkingDirectory=/root/wallet
+ExecStart=/root/wallet/venv/bin/uvicorn api:app --host 127.0.0.1 --port 8006
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

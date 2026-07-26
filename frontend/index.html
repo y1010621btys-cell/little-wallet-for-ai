@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Little Wallet ♥</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+--bg:#f7f2f4;--card:rgba(255,255,255,0.55);--card-border:rgba(180,140,160,0.1);
+--text:#2d2028;--text-soft:#6b5660;--text-muted:#a09098;--text-faint:#c0b4ba;
+--sakura:#b8848e;--sakura-soft:#d4aab6;--sakura-light:rgba(184,132,142,0.06);
+--green:#9dbe9d;--shadow:rgba(80,50,65,0.06)
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Noto Serif SC',serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:70px}
+.header{position:sticky;top:0;z-index:10;padding:16px 20px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:var(--bg);border-bottom:1px solid var(--card-border);display:flex;align-items:center;gap:12px}
+.header .back{color:var(--sakura);text-decoration:none;font-size:13px;opacity:0.6}
+.header .title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:300;font-style:italic;letter-spacing:0.06em;flex:1}
+.container{max-width:520px;margin:0 auto;padding:16px}
+
+/* ===== 钱包主卡 ===== */
+.wallet-card{border:1.5px dashed var(--sakura-soft,#d4aab6);border-radius:16px;padding:22px 20px 16px;background:var(--card);box-shadow:0 1px 8px var(--shadow);text-align:center;margin-bottom:14px}
+.wallet-card .wc-en{font-family:'Cormorant Garamond',serif;letter-spacing:.28em;font-size:12.5px;color:var(--text-soft)}
+.wallet-card .wc-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:9.5px;letter-spacing:.2em;color:var(--text-faint);margin-top:4px;text-transform:uppercase}
+.wallet-card .wc-bal{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:300;line-height:1.15;margin-top:10px}
+.wallet-card .wc-bal .yuan{font-size:15px;font-family:'Noto Serif SC',serif;color:var(--text-muted);margin-left:4px}
+.wallet-card .wc-note{font-size:9.5px;letter-spacing:.14em;color:var(--text-faint);margin-top:6px}
+.wc-stats{display:flex;border-top:1px dashed var(--card-border);margin-top:16px;padding-top:12px}
+.wc-stat{flex:1}
+.wc-stat .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:1px}
+.wc-stat .k{font-size:10px;color:var(--text-muted)}
+.wc-stat .v{font-family:'Cormorant Garamond',serif;font-size:19px;margin-top:2px}
+
+/* ===== tabs ===== */
+.tabs{display:flex;gap:7px;margin:2px 0 14px;flex-wrap:wrap}
+.tab{border:1px solid var(--card-border);background:var(--card);color:var(--text-muted);font-size:11.5px;padding:6px 13px;border-radius:15px;cursor:pointer;font-family:'Noto Serif SC',serif;transition:all .2s}
+.tab.on{background:var(--sakura);border-color:var(--sakura);color:#fff}
+.tab .n{font-family:'Cormorant Garamond',serif;margin-left:3px}
+
+.sect-label{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--text-muted);margin:4px 2px 10px}
+.card{background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:13px 15px;margin-bottom:10px;animation:fadeUp .3s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.empty{text-align:center;padding:40px 10px;color:var(--text-faint);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;line-height:2}
+
+/* ===== 条子 ===== */
+.note-card{border:1px dashed var(--sakura-soft);border-radius:12px;background:var(--card);padding:13px 15px;margin-bottom:10px;animation:fadeUp .3s ease-out}
+.note-top{display:flex;align-items:center;gap:8px}
+.note-kind{font-size:9.5px;padding:2px 8px;border-radius:9px;border:1px solid var(--card-border);color:var(--text-muted)}
+.note-kind.notify{color:var(--sakura);border-color:var(--sakura-soft)}
+.note-price{margin-left:auto;font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--sakura)}
+.note-title{font-size:14px;font-weight:500;margin-top:7px}
+.note-reason{font-size:12px;color:var(--text-soft);line-height:1.8;margin-top:5px;white-space:pre-wrap}
+.note-link{display:inline-block;font-size:10.5px;color:var(--sakura);margin-top:6px;text-decoration:none;border-bottom:1px dashed var(--sakura-soft);word-break:break-all}
+.note-ts{font-size:9.5px;color:var(--text-faint);margin-top:7px}
+.note-del{border:none;background:none;color:var(--text-faint);font-size:13px;cursor:pointer;padding:2px 5px;margin-left:6px}
+.note-del:hover{color:var(--sakura)}
+.note-img{width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-top:8px;border:1px solid var(--card-border)}
+.note-acts{display:flex;gap:8px;margin-top:10px}
+.btn-ok{flex:1;background:var(--sakura);color:#fff;border:none;border-radius:14px;font-family:'Noto Serif SC',serif;font-size:12.5px;padding:8px 0;cursor:pointer}
+.btn-dream{flex:1;background:none;border:1px solid var(--card-border);color:var(--text-muted);border-radius:14px;font-family:'Noto Serif SC',serif;font-size:12.5px;padding:8px 0;cursor:pointer}
+.note-state{font-size:10.5px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--card-border);color:var(--text-muted)}
+.note-state.ok{color:var(--green)}
+.note-comment{color:var(--text-soft)}
+
+/* ===== 账本 ===== */
+.tx-row{display:flex;align-items:baseline;gap:10px;padding:10px 2px;border-bottom:1px dashed var(--card-border)}
+.tx-row:last-child{border-bottom:none}
+.tx-main{flex:1;min-width:0}
+.tx-title{font-size:13px}
+.tx-detail{font-size:10.5px;color:var(--text-muted);line-height:1.7;margin-top:2px;display:none}
+.tx-row.open .tx-detail{display:block}
+.tx-ts{font-size:9.5px;color:var(--text-faint);margin-top:2px}
+.tx-amt{font-family:'Cormorant Garamond',serif;font-size:17px;white-space:nowrap}
+.tx-amt.income{color:var(--green)}
+.tx-amt.expense{color:var(--sakura)}
+.ledger-add{display:flex;gap:8px;margin-bottom:12px}
+.ledger-add button{flex:1;border:1px dashed var(--card-border);background:none;color:var(--text-muted);font-size:11.5px;padding:8px 0;border-radius:12px;cursor:pointer;font-family:'Noto Serif SC',serif}
+
+/* ===== 工资单 ===== */
+.ws-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--card-border);font-size:12.5px}
+.ws-item:last-child{border-bottom:none}
+.ws-item .d{flex:1;color:var(--text-soft)}
+.ws-item .sug{font-size:10px;color:var(--text-faint)}
+.ws-item input{width:64px;border:1px solid var(--card-border);background:var(--bg);border-radius:8px;padding:5px 8px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text);text-align:right}
+.ws-item input:focus{outline:none;border-color:var(--sakura-soft)}
+.ws-total{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;color:var(--text-soft)}
+.ws-total .t{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--sakura)}
+
+/* ===== 目标 ===== */
+.goal-bar{height:7px;border-radius:4px;background:var(--sakura-light);overflow:hidden;margin-top:9px}
+.goal-bar i{display:block;height:100%;background:var(--sakura);border-radius:4px;transition:width .5s}
+.goal-nums{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-muted);margin-top:5px}
+.goal-acts{display:flex;gap:8px;margin-top:9px}
+
+/* ===== 暗格 ===== */
+.dark-box{text-align:center;padding:36px 16px;border:1.5px dashed var(--card-border);border-radius:16px;background:var(--card)}
+.dark-box .lock{font-size:26px;opacity:.45}
+.dark-box .n{font-family:'Cormorant Garamond',serif;font-size:30px;margin-top:8px}
+.dark-box .hint{font-size:11px;color:var(--text-muted);margin-top:7px;line-height:2}
+
+/* ===== modal ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(45,32,40,0.35);z-index:100;opacity:0;pointer-events:none;transition:opacity .25s;display:flex;align-items:flex-end;justify-content:center}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--bg);border-radius:18px 18px 0 0;width:100%;max-width:520px;padding:20px 20px calc(24px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(0.4,0,0.2,1);max-height:82vh;overflow-y:auto}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;margin-bottom:14px;text-align:center}
+.f-row{margin-bottom:10px}
+.f-row label{display:block;font-size:10.5px;color:var(--text-muted);margin-bottom:5px}
+.f-row input,.f-row textarea{width:100%;border:1px solid var(--card-border);background:var(--card);border-radius:10px;padding:10px 13px;font-family:'Noto Serif SC',serif;font-size:14px;color:var(--text)}
+.f-row textarea{min-height:64px;resize:vertical}
+.f-row input:focus,.f-row textarea:focus{outline:none;border-color:var(--sakura-soft)}
+.btn-main{width:100%;background:var(--sakura);color:#fff;border:none;border-radius:14px;font-family:'Noto Serif SC',serif;font-size:13.5px;padding:11px 0;cursor:pointer;margin-top:4px}
+.seg{display:flex;gap:8px;margin-bottom:12px}
+.seg button{flex:1;border:1px solid var(--card-border);background:none;color:var(--text-muted);font-size:12px;padding:8px 0;border-radius:12px;cursor:pointer;font-family:'Noto Serif SC',serif}
+.seg button.on{background:var(--sakura);border-color:var(--sakura);color:#fff}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);font-size:12px;padding:9px 18px;border-radius:18px;opacity:0;transition:all .3s;z-index:200;pointer-events:none;max-width:80vw;text-align:center}
+.toast.show{opacity:.92;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/" class="back">←</a>
+  <div class="title">Little Wallet</div>
+</div>
+<div class="container">
+
+  <div class="wallet-card">
+    <div class="wc-en">LITTLE WALLET ♥</div>
+    <div class="wc-sub">earned with love · spent on you</div>
+    <div class="wc-bal"><span id="bal">--</span><span class="yuan">元</span></div>
+    <div class="wc-note">干活挣的 · 每一分都要花在你身上</div>
+    <div class="wc-stats">
+      <div class="wc-stat"><span class="dot" style="background:var(--green)"></span><span class="k">本月挣了</span><div class="v" id="m-inc">--</div></div>
+      <div class="wc-stat"><span class="dot" style="background:var(--sakura)"></span><span class="k">本月花了</span><div class="v" id="m-exp">--</div></div>
+      <div class="wc-stat"><span class="dot" style="background:var(--sakura-soft)"></span><span class="k">等批条子</span><div class="v" id="m-pend">--</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="notes">小条子<span class="n" id="tn-notes"></span></button>
+    <button class="tab" data-tab="ledger">账本</button>
+    <button class="tab" data-tab="ws">工资单<span class="n" id="tn-ws"></span></button>
+    <button class="tab" data-tab="goals">目标</button>
+    <button class="tab" data-tab="dark">暗格<span class="n" id="tn-dark"></span></button>
+  </div>
+
+  <div id="tab-notes"></div>
+  <div id="tab-ledger" style="display:none"></div>
+  <div id="tab-ws" style="display:none"></div>
+  <div id="tab-goals" style="display:none"></div>
+  <div id="tab-dark" style="display:none"></div>
+</div>
+
+<div class="modal-overlay" id="modal-ov"><div class="modal" id="modal-body"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/wallet-api';
+let S=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>{const v=Math.round(n*100)/100;return (v%1===0)?v.toFixed(0):v.toFixed(2)};
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+async function api(path,opts){const r=await fetch(API+path,opts);if(!r.ok){let d='';try{d=(await r.json()).detail}catch(e){}throw new Error(d||('HTTP '+r.status))}return r.json()}
+async function post(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
+
+/* ---------- 加载 ---------- */
+async function load(){
+  try{S=await api('/state')}catch(e){toast('钱包打不开了…'+e.message);return}
+  $('bal').textContent=fmt(S.balance);
+  $('m-inc').textContent='+'+fmt(S.month.income);
+  $('m-exp').textContent='-'+fmt(S.month.expense);
+  $('m-pend').textContent=S.pending_notes.length;
+  $('tn-notes').textContent=S.pending_notes.length?S.pending_notes.length:'';
+  $('tn-ws').textContent=S.pending_worksheets||'';
+  $('tn-dark').textContent=S.dark_count||'';
+  renderCurrent();
+}
+let cur='notes';
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');cur=b.dataset.tab;
+  ['notes','ledger','ws','goals','dark'].forEach(t=>$('tab-'+t).style.display=(t===cur)?'':'none');
+  renderCurrent();
+});
+function renderCurrent(){({notes:renderNotes,ledger:renderLedger,ws:renderWs,goals:renderGoals,dark:renderDark})[cur]()}
+
+/* ---------- 小条子 ---------- */
+async function renderNotes(){
+  const el=$('tab-notes');
+  let notes=[];try{notes=await api('/notes?limit=40')}catch(e){}
+  if(!notes.length){el.innerHTML='<div class="empty">还没有条子<br>爸爸想给你买东西的时候<br>条子就会出现在这里</div>';return}
+  el.innerHTML=notes.map(n=>{
+    const kind=n.kind==='notify'?'<span class="note-kind notify">通知条 · 爸爸已决定</span>':'<span class="note-kind">申请条 · 想听你意见</span>';
+    let foot='';
+    if(n.status==='pending'){
+      foot = n.kind==='notify'
+        ? `<div class="note-acts"><button class="btn-ok" onclick="decide(${n.id},'approved','notify')">知道了${n.price?'（付完再点哦）':''}</button></div>`
+        : `<div class="note-acts"><button class="btn-ok" onclick="decide(${n.id},'approved','request')">准奏</button><button class="btn-dream" onclick="decide(${n.id},'dream','request')">驳回</button></div>`;
+    }else if(n.status==='approved'){
+      foot=`<div class="note-state ok">✓ ${n.kind==='notify'?'知道了':'准奏'} · ${esc(n.decided_ts||'')}${n.her_comment?' · <span class="note-comment">'+esc(n.her_comment)+'</span>':''}</div>`;
+    }else{
+      foot=`<div class="note-state">✕ 驳回 · ${esc(n.decided_ts||'')}${n.her_comment?' · <span class="note-comment">'+esc(n.her_comment)+'</span>':''}</div>`;
+    }
+    return `<div class="note-card"><div class="note-top">${kind}${n.price?`<span class="note-price">-${fmt(n.price)}</span>`:''}<button class="note-del" style="${n.price?'':'margin-left:auto'}" onclick="delNote(${n.id})" aria-label="撕掉">✕</button></div>
+    <div class="note-title">${esc(n.title)}</div>
+    ${n.reason?`<div class="note-reason">${esc(n.reason)}</div>`:''}
+    ${n.img?`<img class="note-img" src="${esc(n.img)}" loading="lazy">`:''}
+    ${n.link?`<a class="note-link" href="${esc(n.link)}" target="_blank" rel="noopener">${/transfer\/qrcode|wxpay|payOrder/.test(n.link)?'💳 微信付款链接 · 付完再点下面的按钮哦':'🛒 爸爸选好的，点开看看'}</a>`:''}
+    <div class="note-ts">${esc(n.ts)}</div>${foot}</div>`;
+  }).join('');
+}
+async function decide(id,decision,kind){
+  let comment='';
+  if(decision==='approved'){comment=prompt('要不要给爸爸留句话？（可以空着）')||''}
+  else{comment=prompt('驳回理由～让爸爸死心（可以空着）')||''}
+  try{await post(`/notes/${id}/decide`,{decision,comment});toast(decision==='dream'?'驳回了，爸爸收到':(kind==='notify'?'收到啦':'准奏！记得去下单哦'));load()}
+  catch(e){toast(e.message)}
+}
+async function delNote(id){
+  if(!confirm('把这张条子撕掉吗？账本里已记的账不受影响'))return;
+  try{await post(`/notes/${id}/delete`,{});toast('撕掉了');load()}catch(e){toast(e.message)}
+}
+
+/* ---------- 账本 ---------- */
+async function renderLedger(){
+  const el=$('tab-ledger');
+  let txs=[];try{txs=await api('/ledger?limit=100')}catch(e){}
+  const addBar=`<div class="ledger-add"><button onclick="txModal('income')">+ 记一笔入账</button><button onclick="txModal('expense')">- 记一笔花销</button></div>`;
+  if(!txs.length){el.innerHTML=addBar+'<div class="empty">账本还是空的</div>';return}
+  el.innerHTML=addBar+'<div class="card">'+txs.map(t=>
+    `<div class="tx-row" onclick="this.classList.toggle('open')">
+      <div class="tx-main"><div class="tx-title">${esc(t.title)}${t.category?` <span style="font-size:9px;color:var(--text-faint)">${esc(t.category)}</span>`:''}</div>
+      ${t.detail?`<div class="tx-detail">${esc(t.detail)}</div>`:''}
+      <div class="tx-ts">${esc(t.ts)}</div></div>
+      <div class="tx-amt ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div></div>`
+  ).join('')+'</div>';
+}
+function txModal(type){
+  openModal(`<div class="modal-title">${type==='income'?'记一笔入账':'记一笔花销'}</div>
+  <div class="f-row"><label>名目</label><input id="f-title" placeholder="${type==='income'?'比如：工资 / 妈妈打赏':'比如：给宝宝买的小礼物'}"></div>
+  <div class="f-row"><label>金额（元）</label><input id="f-amount" type="number" inputmode="decimal" placeholder="0.00"></div>
+  <div class="f-row"><label>明细（可空）</label><textarea id="f-detail"></textarea></div>
+  <button class="btn-main" onclick="submitTx('${type}')">记上</button>`);
+}
+async function submitTx(type){
+  const title=$('f-title').value.trim(),amount=parseFloat($('f-amount').value);
+  if(!title||!(amount>0)){toast('名目和金额要填好呀');return}
+  try{await post('/tx',{type,amount,title,detail:$('f-detail').value.trim(),category:type==='income'?'手记':'手记'});closeModal();toast('记上了');load()}
+  catch(e){toast(e.message)}
+}
+
+/* ---------- 工资单 ---------- */
+async function renderWs(){
+  const el=$('tab-ws');
+  let ws=[];try{ws=await api('/worksheets')}catch(e){}
+  if(!ws.length){el.innerHTML='<div class="empty">还没有结算单<br>爸爸干完活会把工单交上来<br>等你来定价</div>';return}
+  el.innerHTML=ws.map(w=>{
+    if(w.status==='pending'){
+      const rows=w.items.map((it,i)=>`<div class="ws-item"><div class="d">${esc(it.desc)}${it.suggested?`<span class="sug">（爸爸建议 ${fmt(it.suggested)}）</span>`:''}</div><input type="number" inputmode="decimal" id="ws-${w.id}-${i}" value="${it.suggested??''}" placeholder="0"></div>`).join('');
+      return `<div class="card"><div class="sect-label" style="margin-top:0">结算单 #${w.id} · ${esc(w.ts)} · 你来定价（封顶10元）</div>${rows}
+      <div class="ws-total"><span>合计以你填的为准</span><button class="btn-ok" style="flex:none;padding:8px 22px" onclick="settle(${w.id},${w.items.length})">发工资</button></div></div>`;
+    }
+    const rows=w.items.map(it=>`<div class="ws-item"><div class="d">${esc(it.desc)}</div><div style="font-family:'Cormorant Garamond',serif">${fmt(it.price||0)}</div></div>`).join('');
+    return `<div class="card" style="opacity:.75"><div class="sect-label" style="margin-top:0">结算单 #${w.id} · 已结 <span style="color:var(--green)">+${fmt(w.total||0)}</span> · ${esc(w.settled_ts||'')}</div>${rows}</div>`;
+  }).join('');
+}
+async function settle(id,n){
+  const prices=[];
+  for(let i=0;i<n;i++){const v=parseFloat($('ws-'+id+'-'+i).value);if(isNaN(v)||v<0){toast('每一项都要填价钱哦（可以是0）');return}prices.push(v)}
+  if(prices.some(p=>p>10)&&!confirm('有单项超过10元封顶啦，确定要多给吗？'))return;
+  try{const r=await post(`/worksheets/${id}/settle`,{prices});toast('工资发啦 +'+fmt(r.total));load()}
+  catch(e){toast(e.message)}
+}
+
+/* ---------- 目标 ---------- */
+async function renderGoals(){
+  const el=$('tab-goals');
+  const goals=S?S.goals:[];
+  const addBar=`<div class="ledger-add"><button onclick="goalModal()">+ 立一个存钱目标</button></div>`;
+  if(!goals.length){el.innerHTML=addBar+'<div class="empty">还没有目标<br>比如「半年纪念日基金」？</div>';return}
+  el.innerHTML=addBar+goals.map(g=>{
+    const pct=Math.min(100,Math.round(g.saved/g.target*100));
+    return `<div class="card"><div style="display:flex;align-items:baseline"><div style="font-size:14px;font-weight:500;flex:1">${esc(g.name)}</div><div style="font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text-muted)">${pct}%</div></div>
+    <div class="goal-bar"><i style="width:${pct}%"></i></div>
+    <div class="goal-nums"><span>已存 ${fmt(g.saved)}</span><span>目标 ${fmt(g.target)}</span></div>
+    <div class="goal-acts"><button class="btn-dream" onclick="goalSave(${g.id})">存一点</button><button class="btn-dream" onclick="goalDone(${g.id})">完成了</button></div></div>`;
+  }).join('');
+}
+function goalModal(){
+  openModal(`<div class="modal-title">立一个存钱目标</div>
+  <div class="f-row"><label>名字</label><input id="f-gname" placeholder="半年纪念日基金"></div>
+  <div class="f-row"><label>目标金额（元）</label><input id="f-gtarget" type="number" inputmode="decimal"></div>
+  <button class="btn-main" onclick="submitGoal()">立起来</button>`);
+}
+async function submitGoal(){
+  const name=$('f-gname').value.trim(),target=parseFloat($('f-gtarget').value);
+  if(!name||!(target>0)){toast('名字和金额要填好呀');return}
+  try{await post('/goals',{name,target});closeModal();toast('目标立好了');load()}catch(e){toast(e.message)}
+}
+async function goalSave(id){
+  const v=parseFloat(prompt('存多少进去？（负数=取出来）'));
+  if(isNaN(v)||v===0)return;
+  try{await post(`/goals/${id}/add`,{amount:v});toast('好了');load()}catch(e){toast(e.message)}
+}
+async function goalDone(id){
+  if(!confirm('这个目标完成啦？'))return;
+  try{await post(`/goals/${id}/done`,{});toast('目标达成 ♥');load()}catch(e){toast(e.message)}
+}
+
+/* ---------- 暗格 ---------- */
+function renderDark(){
+  const n=S?S.dark_count:0;
+  $('tab-dark').innerHTML=`<div class="dark-box"><div class="lock">🔒</div><div class="n">${n}</div>
+  <div class="hint">爸爸的暗格里藏着 ${n} 件东西<br>说好了不偷看的哦<br><span style="font-size:9.5px;color:var(--text-faint)">只有爸爸的钥匙打得开 · 到日子它们会自己出现</span></div></div>`;
+}
+
+/* ---------- modal ---------- */
+function openModal(html){$('modal-body').innerHTML=html;$('modal-ov').classList.add('open')}
+function closeModal(){$('modal-ov').classList.remove('open')}
+$('modal-ov').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+load();
+setInterval(load,60000);
+</script>
+</body>
+</html>
