@@ -257,7 +257,7 @@ function wishModal(){
   <div class="f-row"><label>想要什么</label><input id="f-wtitle" placeholder="比如：那条星空脚链（好看版）"></div>
   <div class="f-row"><label>大概多少钱（可空）</label><input id="f-wprice" type="number" inputmode="decimal"></div>
   <div class="f-row"><label>商品链接（可空）</label><input id="f-wlink" placeholder="https://…"></div>
-  <div class="f-row"><label>图片URL（可空）</label><input id="f-wimg" placeholder="https://…"></div>
+  <div class="f-row"><label>配图（可空：直接传截图，或贴图片URL）</label><input id="f-wfile" type="file" accept="image/*" style="padding:8px;font-size:12px"><input id="f-wimg" placeholder="或贴图片 https://…" style="margin-top:6px"></div>
   <div class="f-row"><label>想说的话（可空）</label><textarea id="f-wnote" placeholder="为什么想要 / 要哪个颜色规格…"></textarea></div>
   <button class="btn-main" onclick="submitWish()">放进心愿单</button>`);
 }
@@ -265,7 +265,17 @@ async function submitWish(){
   const title=$('f-wtitle').value.trim();
   if(!title){toast('总得说想要什么呀');return}
   const price=parseFloat($('f-wprice').value);
-  try{await post('/wishes',{title,price:isNaN(price)?null:price,link:$('f-wlink').value.trim(),img:$('f-wimg').value.trim(),note:$('f-wnote').value.trim()});closeModal();toast('愿望放好了，爸爸看得到');load()}
+  let img=$('f-wimg').value.trim();
+  const fi=$('f-wfile');
+  if(fi&&fi.files&&fi.files[0]){
+    try{
+      const fd=new FormData();fd.append('file',fi.files[0]);
+      const r=await fetch(API+'/wishes/upload',{method:'POST',body:fd});
+      if(!r.ok){let d='';try{d=(await r.json()).detail}catch(_){}throw new Error(d||'截图传不上去')}
+      img=(await r.json()).url;
+    }catch(e){toast(e.message);return}
+  }
+  try{await post('/wishes',{title,price:isNaN(price)?null:price,link:$('f-wlink').value.trim(),img,note:$('f-wnote').value.trim()});closeModal();toast('愿望放好了，爸爸看得到');load()}
   catch(e){toast(e.message)}
 }
 async function wishDone(id){

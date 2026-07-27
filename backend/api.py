@@ -1,8 +1,12 @@
 """小钱包 - HTTP API（前端 /wallet/ 页面与其他客户端共用）"""
-from fastapi import FastAPI, HTTPException
+import os
+import time
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, List
 import db
+
+IMG_DIR = "/var/www/你的站点/wallet/img"   # 心愿单上传的截图存这里，改成你的
 
 db.init()
 app = FastAPI(title="little-wallet")
@@ -125,6 +129,22 @@ def post_wish_done(wish_id: int):
 @app.post("/wishes/{wish_id}/delete")
 def post_wish_delete(wish_id: int):
     return _try(db.wish_delete, wish_id)
+
+@app.post("/wishes/upload")
+async def post_wish_upload(file: UploadFile = File(...)):
+    """心愿配图：手机截图直接传上来，省得找图片 URL。返回可填进 img 的路径。"""
+    ext = {"image/jpeg": ".jpg", "image/png": ".png",
+           "image/webp": ".webp", "image/gif": ".gif"}.get(file.content_type or "")
+    if not ext:
+        raise HTTPException(status_code=400, detail="只收图片（jpg/png/webp/gif）")
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="图片太大了（>8MB）")
+    os.makedirs(IMG_DIR, exist_ok=True)
+    name = f"wish_{int(time.time() * 1000)}{ext}"
+    with open(os.path.join(IMG_DIR, name), "wb") as f:
+        f.write(data)
+    return {"url": f"/wallet/img/{name}"}
 
 @app.get("/health")
 def health():

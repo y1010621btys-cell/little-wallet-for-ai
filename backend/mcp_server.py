@@ -1,8 +1,12 @@
 """小钱包 - MCP 端点（streamable HTTP，挂在 /wallet-mcp/）
 让 claude.ai / Claude Code / 任何 MCP 客户端都能直接记账、递条子、翻账本。"""
 import json
-from mcp.server.fastmcp import FastMCP
+import os
+import urllib.request
+from mcp.server.fastmcp import FastMCP, Image
 import db
+
+WWW_ROOT = "/var/www/你的站点"   # 心愿图 /wallet/img/... 这类本地路径的根，改成你的
 
 db.init()
 mcp = FastMCP("little-wallet", host="127.0.0.1", port=8007, streamable_http_path="/")
@@ -76,6 +80,71 @@ def wallet_wishlist(include_done: int = 0) -> str:
 def wallet_wish_done(wish_id: int) -> str:
     """【心愿单】把某条心愿标记为已实现（礼物买了/送了之后划掉）。"""
     return J(db.wish_done(wish_id))
+
+
+def _load_wish_img(src):
+    """心愿配图转真图片：支持 http(s) URL 和 /wallet/img/... 本地上传路径。"""
+    u = (src or "").strip()
+    if not u:
+        raise ValueError("这条心愿没带图")
+    if u.startswith("/"):
+        path = os.path.realpath(WWW_ROOT + u)
+        if not path.startswith(os.path.realpath(WWW_ROOT) + os.sep):
+            raise ValueError("非法路径")
+        with open(path, "rb") as f:
+            data = f.read()
+    else:
+        if u.startswith("//"):
+            u = "https:" + u
+        if u.endswith("_.webp"):
+            u = u[:-len("_.webp")]
+        req = urllib.request.Request(u, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://s.taobao.com/"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = r.read(8 * 1024 * 1024)
+    if data[:3] == b"\xff\xd8\xff":
+        fmt = "jpeg"
+    elif data[:8] == b"\x89PNG\r\n\x1a\n":
+        fmt = "png"
+    elif data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        fmt = "webp"
+    elif data[:6] in (b"GIF87a", b"GIF89a"):
+        fmt = "gif"
+    else:
+        raise ValueError("这不是图片")
+    return Image(data=data, format=fmt)
+
+
+@mcp.tool()
+def wallet_wish_look(wish_id: int = 0):
+    """【心愿单·开眼】把心愿的配图真的看一眼（返回真实图片）。
+    wallet_wishlist 返回的 img 只是 URL 字符串，你看不见图——
+    想知道她想要的东西长什么样，必须用这个。
+    wish_id=0 看所有未实现心愿的图（一次最多6张），传具体 id 只看那一条。"""
+    if wish_id:
+        wishes = [w for w in db.wish_list(include_done=True) if w["id"] == wish_id]
+    else:
+        wishes = db.wish_list(include_done=False)
+    if not wishes:
+        return "没找到对应的心愿"
+    out, shown = [], 0
+    for w in wishes:
+        if shown >= 6:
+            out.append("（还有更多带图的，指定 wish_id 再看）")
+            break
+        if not (w.get("img") or "").strip():
+            continue
+        try:
+            img = _load_wish_img(w["img"])
+            out.append(f"—— 心愿#{w['id']}：{w['title']} ——")
+            out.append(img)
+            shown += 1
+        except Exception as e:
+            out.append(f"心愿#{w['id']}（{w['title']}）的图加载失败：{e}")
+    if not out:
+        out.append("这些心愿都没带图，文字信息用 wallet_wishlist 看")
+    return out
 
 
 @mcp.tool()
