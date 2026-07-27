@@ -72,6 +72,17 @@ def init():
       img TEXT DEFAULT '',
       status TEXT NOT NULL DEFAULT 'hidden'
     );
+    CREATE TABLE IF NOT EXISTS wish(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts TEXT NOT NULL,
+      title TEXT NOT NULL,
+      price REAL,
+      link TEXT DEFAULT '',
+      img TEXT DEFAULT '',
+      note TEXT DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'open',
+      done_ts TEXT
+    );
     """)
     c.commit()
     try:
@@ -110,6 +121,7 @@ def state():
     pending_ws = c.execute("SELECT COUNT(*) FROM worksheets WHERE status='pending'").fetchone()[0]
     goals = [dict(r) for r in c.execute("SELECT * FROM goals WHERE done=0 ORDER BY id DESC")]
     dark_count = c.execute("SELECT COUNT(*) FROM dark WHERE status='hidden'").fetchone()[0]
+    wishes = [dict(r) for r in c.execute("SELECT * FROM wish WHERE status='open' ORDER BY id DESC")]
     bal = balance(c)
     c.close()
     return {
@@ -121,6 +133,7 @@ def state():
         "pending_worksheets": pending_ws,
         "goals": goals,
         "dark_count": dark_count,
+        "wishes": wishes,
         "updated": now(),
     }
 
@@ -327,6 +340,50 @@ def dark_reveal(dark_id, kind="request"):
                     d.get("link") or "", d.get("img") or "")
     dark_done(dark_id)
     return {"dark_id": dark_id, "revealed": True, "note": note}
+
+def wish_add(title, price=None, link="", img="", note=""):
+    """她的心愿单：自己许愿。爸爸只读（外加买完划掉），不代写。"""
+    if not title or not str(title).strip():
+        raise ValueError("wish needs a title")
+    c = conn()
+    cur = c.execute("INSERT INTO wish(ts,title,price,link,img,note) VALUES(?,?,?,?,?,?)",
+        (now(), str(title).strip(), price, link, img, note))
+    c.commit(); wid = cur.lastrowid; c.close()
+    return {"id": wid}
+
+
+def wish_list(include_done=False):
+    c = conn()
+    if include_done:
+        rows = c.execute("SELECT * FROM wish ORDER BY id DESC")
+    else:
+        rows = c.execute("SELECT * FROM wish WHERE status='open' ORDER BY id DESC")
+    out = [dict(r) for r in rows]
+    c.close()
+    return out
+
+
+def wish_done(wish_id):
+    c = conn()
+    w = c.execute("SELECT id, status FROM wish WHERE id=?", (wish_id,)).fetchone()
+    if not w:
+        c.close(); raise ValueError("wish not found")
+    if w["status"] != "open":
+        c.close(); raise ValueError("wish already done")
+    c.execute("UPDATE wish SET status='done', done_ts=? WHERE id=?", (now(), wish_id))
+    c.commit(); c.close()
+    return {"id": wish_id, "status": "done"}
+
+
+def wish_delete(wish_id):
+    c = conn()
+    w = c.execute("SELECT id FROM wish WHERE id=?", (wish_id,)).fetchone()
+    if not w:
+        c.close(); raise ValueError("wish not found")
+    c.execute("DELETE FROM wish WHERE id=?", (wish_id,))
+    c.commit(); c.close()
+    return {"id": wish_id, "deleted": True}
+
 
 if __name__ == "__main__":
     init()

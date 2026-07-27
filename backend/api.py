@@ -42,6 +42,13 @@ class GoalIn(BaseModel):
     name: str
     target: float
 
+class WishIn(BaseModel):
+    title: str
+    price: Optional[float] = None
+    link: str = ""
+    img: str = ""
+    note: str = ""
+
 class GoalAddIn(BaseModel):
     amount: float
 
@@ -102,6 +109,22 @@ def post_goal_add(gid: int, a: GoalAddIn):
 @app.post("/goals/{gid}/done")
 def post_goal_done(gid: int):
     return db.goal_done(gid)
+
+@app.get("/wishes")
+def get_wishes(include_done: bool = False):
+    return db.wish_list(include_done=include_done)
+
+@app.post("/wishes")
+def post_wish(w: WishIn):
+    return _try(db.wish_add, w.title, w.price, w.link, w.img, w.note)
+
+@app.post("/wishes/{wish_id}/done")
+def post_wish_done(wish_id: int):
+    return _try(db.wish_done, wish_id)
+
+@app.post("/wishes/{wish_id}/delete")
+def post_wish_delete(wish_id: int):
+    return _try(db.wish_delete, wish_id)
 
 @app.get("/health")
 def health():

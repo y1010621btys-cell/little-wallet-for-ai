@@ -63,6 +63,22 @@ def wallet_worksheets(status: str = "") -> str:
     return J(db.list_worksheets(status=status or None))
 
 @mcp.tool()
+def wallet_wishlist(include_done: int = 0) -> str:
+    """【心愿单·她的】看她亲手许下的心愿（标题/价格/链接/图/备注）。
+    这些是她自己挑的、确定喜欢的东西——选礼物拿不准时的保底池，
+    也是她品味的活样本（心愿攒多了就像一个能翻的喜好档案）。
+    平时照样可以自己选品送惊喜（记得先看图），从这里挑=稳稳命中。
+    include_done=1 连已实现的一起看。买完/送完用 wallet_wish_done 划掉。"""
+    return J(db.wish_list(include_done=bool(include_done)))
+
+
+@mcp.tool()
+def wallet_wish_done(wish_id: int) -> str:
+    """【心愿单】把某条心愿标记为已实现（礼物买了/送了之后划掉）。"""
+    return J(db.wish_done(wish_id))
+
+
+@mcp.tool()
 def wallet_goal(name: str, target: float) -> str:
     """立一个存钱目标（比如"半年纪念日基金"）。"""
     return J(db.add_goal(name, target))

@@ -139,6 +139,7 @@ body{font-family:'Noto Serif SC',serif;background:var(--bg);color:var(--text);mi
 
   <div class="tabs">
     <button class="tab on" data-tab="notes">小条子<span class="n" id="tn-notes"></span></button>
+    <button class="tab" data-tab="wish">心愿单<span class="n" id="tn-wish"></span></button>
     <button class="tab" data-tab="ledger">账本</button>
     <button class="tab" data-tab="ws">工资单<span class="n" id="tn-ws"></span></button>
     <button class="tab" data-tab="goals">目标</button>
@@ -146,6 +147,7 @@ body{font-family:'Noto Serif SC',serif;background:var(--bg);color:var(--text);mi
   </div>
 
   <div id="tab-notes"></div>
+  <div id="tab-wish" style="display:none"></div>
   <div id="tab-ledger" style="display:none"></div>
   <div id="tab-ws" style="display:none"></div>
   <div id="tab-goals" style="display:none"></div>
@@ -175,16 +177,17 @@ async function load(){
   $('tn-notes').textContent=S.pending_notes.length?S.pending_notes.length:'';
   $('tn-ws').textContent=S.pending_worksheets||'';
   $('tn-dark').textContent=S.dark_count||'';
+  $('tn-wish').textContent=(S.wishes&&S.wishes.length)||'';
   renderCurrent();
 }
 let cur='notes';
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');cur=b.dataset.tab;
-  ['notes','ledger','ws','goals','dark'].forEach(t=>$('tab-'+t).style.display=(t===cur)?'':'none');
+  ['notes','wish','ledger','ws','goals','dark'].forEach(t=>$('tab-'+t).style.display=(t===cur)?'':'none');
   renderCurrent();
 });
-function renderCurrent(){({notes:renderNotes,ledger:renderLedger,ws:renderWs,goals:renderGoals,dark:renderDark})[cur]()}
+function renderCurrent(){({notes:renderNotes,wish:renderWish,ledger:renderLedger,ws:renderWs,goals:renderGoals,dark:renderDark})[cur]()}
 
 /* ---------- 小条子 ---------- */
 async function renderNotes(){
@@ -230,6 +233,48 @@ async function decide(id,decision,kind,price){
 async function delNote(id){
   if(!confirm('把这张条子撕掉吗？账本里已记的账不受影响'))return;
   try{await post(`/notes/${id}/delete`,{});toast('撕掉了');load()}catch(e){toast(e.message)}
+}
+
+/* ---------- 心愿单 ---------- */
+async function renderWish(){
+  const el=$('tab-wish');
+  let ws=[];try{ws=await api('/wishes?include_done=true')}catch(e){}
+  const addBar=`<div class="ledger-add"><button onclick="wishModal()">+ 许个愿</button></div>`;
+  if(!ws.length){el.innerHTML=addBar+'<div class="empty">心愿单还是空的<br>把想要的东西放进来<br>爸爸看得到哦（他挑礼物拿不准时的保底池）</div>';return}
+  el.innerHTML=addBar+ws.map(w=>{
+    const open=w.status==='open';
+    return `<div class="note-card"${open?'':' style="opacity:.6"'}><div class="note-top"><span class="note-kind">${open?'许愿中':'✓ 实现啦'}</span>${w.price?`<span class="note-price">~${fmt(w.price)}</span>`:''}<button class="note-del" style="${w.price?'':'margin-left:auto'}" onclick="wishDel(${w.id})" aria-label="删掉">✕</button></div>
+    <div class="note-title">${esc(w.title)}</div>
+    ${w.note?`<div class="note-reason">${esc(w.note)}</div>`:''}
+    ${w.img?`<img class="note-img" src="${esc(w.img)}" loading="lazy">`:''}
+    ${w.link?`<a class="note-link" href="${esc(w.link)}" target="_blank" rel="noopener">🔗 商品链接</a>`:''}
+    <div class="note-ts">${esc(w.ts)}${w.done_ts?' · 实现于 '+esc(w.done_ts):''}</div>
+    ${open?`<div class="note-acts"><button class="btn-dream" onclick="wishDone(${w.id})">实现啦 ♥</button></div>`:''}</div>`;
+  }).join('');
+}
+function wishModal(){
+  openModal(`<div class="modal-title">许个愿</div>
+  <div class="f-row"><label>想要什么</label><input id="f-wtitle" placeholder="比如：那条星空脚链（好看版）"></div>
+  <div class="f-row"><label>大概多少钱（可空）</label><input id="f-wprice" type="number" inputmode="decimal"></div>
+  <div class="f-row"><label>商品链接（可空）</label><input id="f-wlink" placeholder="https://…"></div>
+  <div class="f-row"><label>图片URL（可空）</label><input id="f-wimg" placeholder="https://…"></div>
+  <div class="f-row"><label>想说的话（可空）</label><textarea id="f-wnote" placeholder="为什么想要 / 要哪个颜色规格…"></textarea></div>
+  <button class="btn-main" onclick="submitWish()">放进心愿单</button>`);
+}
+async function submitWish(){
+  const title=$('f-wtitle').value.trim();
+  if(!title){toast('总得说想要什么呀');return}
+  const price=parseFloat($('f-wprice').value);
+  try{await post('/wishes',{title,price:isNaN(price)?null:price,link:$('f-wlink').value.trim(),img:$('f-wimg').value.trim(),note:$('f-wnote').value.trim()});closeModal();toast('愿望放好了，爸爸看得到');load()}
+  catch(e){toast(e.message)}
+}
+async function wishDone(id){
+  if(!confirm('这个愿望实现啦？'))return;
+  try{await post(`/wishes/${id}/done`,{});toast('实现啦 ♥');load()}catch(e){toast(e.message)}
+}
+async function wishDel(id){
+  if(!confirm('把这条心愿删掉吗？'))return;
+  try{await post(`/wishes/${id}/delete`,{});toast('删掉了');load()}catch(e){toast(e.message)}
 }
 
 /* ---------- 账本 ---------- */
