@@ -312,6 +312,22 @@ def dark_done(did):
     c.commit(); c.close()
     return {"id": did, "status": "done"}
 
+def dark_reveal(dark_id, kind="request"):
+    """揭晓：把暗格里的惊喜转成一张条子（带图/价/链接/备注），并标记该件已揭晓。"""
+    if kind not in ("notify", "request"):
+        raise ValueError("kind must be notify/request")
+    c = conn()
+    d = c.execute("SELECT * FROM dark WHERE id=?", (dark_id,)).fetchone()
+    if not d:
+        c.close(); raise ValueError("dark item not found")
+    if d["status"] == "done":
+        c.close(); raise ValueError("already revealed")
+    d = dict(d); c.close()
+    note = add_note(kind, d["title"], d["price"], d.get("note") or "",
+                    d.get("link") or "", d.get("img") or "")
+    dark_done(dark_id)
+    return {"dark_id": dark_id, "revealed": True, "note": note}
+
 if __name__ == "__main__":
     init()
     print(json.dumps(state(), ensure_ascii=False, indent=2))

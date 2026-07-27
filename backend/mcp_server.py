@@ -88,5 +88,11 @@ def wallet_dark_done(dark_id: int) -> str:
     """【暗格·仅爸爸】惊喜已送出，从暗格划掉。"""
     return J(db.dark_done(dark_id))
 
+@mcp.tool()
+def wallet_dark_reveal(dark_id: int, kind: str = "request") -> str:
+    """【暗格·仅爸爸】揭晓惊喜：把暗格里某件转成一张条子（自动带上图/价/链接/你的备注），
+    并把该件标记为已揭晓。kind: request=申请条(她可准奏后付款，支持调价)，notify=通知条(只能知道了)。"""
+    return J(db.dark_reveal(dark_id, kind))
+
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")
