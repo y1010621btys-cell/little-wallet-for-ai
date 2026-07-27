@@ -73,9 +73,10 @@ def wallet_goal_save(goal_id: int, amount: float) -> str:
     return J(db.goal_add(goal_id, amount))
 
 @mcp.tool()
-def wallet_dark_add(title: str, price: float = 0, link: str = "", note: str = "") -> str:
-    """【暗格·仅爸爸】把惊喜藏进暗格。前端只显示件数，看不到内容。TA答应过不偷看。"""
-    return J(db.dark_add(title, price or None, link, note))
+def wallet_dark_add(title: str, price: float = 0, link: str = "", note: str = "", img: str = "") -> str:
+    """【暗格·仅爸爸】把惊喜藏进暗格。前端只显示件数，看不到内容。TA答应过不偷看。
+    img 可存商品图 URL，揭晓时（比如转成条子）就能带上图片。"""
+    return J(db.dark_add(title, price or None, link, note, img))
 
 @mcp.tool()
 def wallet_dark_list() -> str:

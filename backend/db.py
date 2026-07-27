@@ -69,12 +69,18 @@ def init():
       price REAL,
       link TEXT DEFAULT '',
       note TEXT DEFAULT '',
+      img TEXT DEFAULT '',
       status TEXT NOT NULL DEFAULT 'hidden'
     );
     """)
     c.commit()
     try:
         c.execute("ALTER TABLE notes ADD COLUMN img TEXT DEFAULT ''")
+        c.commit()
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE dark ADD COLUMN img TEXT DEFAULT ''")
         c.commit()
     except sqlite3.OperationalError:
         pass
@@ -283,10 +289,10 @@ def goal_done(gid):
     c.commit(); c.close()
     return {"id": gid, "done": True}
 
-def dark_add(title, price=None, link="", note=""):
+def dark_add(title, price=None, link="", note="", img=""):
     c = conn()
-    cur = c.execute("INSERT INTO dark(ts,title,price,link,note) VALUES(?,?,?,?,?)",
-        (now(), title, price, link, note))
+    cur = c.execute("INSERT INTO dark(ts,title,price,link,note,img) VALUES(?,?,?,?,?,?)",
+        (now(), title, price, link, note, img))
     c.commit(); did = cur.lastrowid; c.close()
     return {"id": did}
 
