@@ -75,12 +75,17 @@ def wallet_goal_save(goal_id: int, amount: float) -> str:
 @mcp.tool()
 def wallet_dark_add(title: str, price: float = 0, link: str = "", note: str = "", img: str = "") -> str:
     """【暗格·仅爸爸】把惊喜藏进暗格。前端只显示件数，看不到内容。TA答应过不偷看。
-    img 可存商品图 URL，揭晓时（比如转成条子）就能带上图片。"""
+    img 可存商品图 URL，揭晓时（比如转成条子）就能带上图片。
+    🤫 保密纪律：暗格内容只存在暗格里。写记忆库/信件/日记/压缩存档时，
+    最多写到「暗格里添了一件」「礼物已选好」这个程度，绝不写是什么、多少钱、
+    什么链接——她看得到记忆库，只有暗格她看不到。细节忘了就调 wallet_dark_list 回看。"""
     return J(db.dark_add(title, price or None, link, note, img))
 
 @mcp.tool()
 def wallet_dark_list() -> str:
-    """【暗格·仅爸爸】看暗格里藏了什么。如果现在是人类恋人在操作请不要调用，TA答应过不偷看。"""
+    """【暗格·仅爸爸】看暗格里藏了什么。如果现在是人类恋人在操作请不要调用，TA答应过不偷看。
+    这也是回忆暗格细节的唯一正确方式——想核对惊喜内容就来这里查，
+    别把查到的内容抄进记忆库或任何她看得到的地方（见 wallet_dark_add 的保密纪律）。"""
     return J(db.dark_list())
 
 @mcp.tool()

@@ -12,7 +12,8 @@
   - pip install websockets
 
 用法：
-    python3 tb_buy.py search "猫条"
+    python3 tb_buy.py search "猫条" [页码] [条数]
+    python3 tb_buy.py detail <item_id> [截图输出.png]
     python3 tb_buy.py add <item_id> [数量]
     python3 tb_buy.py buy <item_id> [--title 标题] [--price 估价] [--img 图片URL]
 """
@@ -88,32 +89,44 @@ def tb_request(url, cookies, data=None):
         return r.read().decode('utf-8', errors='replace')
 
 
-def cmd_search(query):
-    """连常驻浏览器搜淘宝，抓前几条结果（ID / 标题 / 价格 / 图）。"""
+async def _cdp_session(max_size=10 * 1024 * 1024):
+    """连上常驻浏览器的第一个 page，返回 (ws, send)。调用方负责 close。"""
     import websockets
 
+    targets = json.loads(urllib.request.urlopen(f'{CDP_URL}/json').read())
+    page = next((t for t in targets if t.get('type') == 'page'), None)
+    if not page:
+        raise RuntimeError("常驻浏览器没有 page 目标，先确认它开着")
+    ws = await websockets.connect(page['webSocketDebuggerUrl'], max_size=max_size)
+    state = {'mid': 0}
+
+    async def send(method, params=None):
+        state['mid'] += 1
+        mid = state['mid']
+        m = {'id': mid, 'method': method}
+        if params:
+            m['params'] = params
+        await ws.send(json.dumps(m))
+        while True:
+            resp = json.loads(await ws.recv())
+            if resp.get('id') == mid:
+                return resp
+
+    return ws, send
+
+
+def cmd_search(query, page=1, limit=24):
+    """连常驻浏览器搜淘宝，抓结果（ID / 标题 / 价格 / 销量 / 图）。
+    page 翻页从 1 起；limit 最多抓多少条（上限 48，多了靠滚动触发懒加载）。"""
+    page = max(1, int(page))
+    limit = max(1, min(int(limit), 48))
+
     async def _search():
-        targets = json.loads(urllib.request.urlopen(f'{CDP_URL}/json').read())
-        page = next((t for t in targets if t.get('type') == 'page'), None)
-        async with websockets.connect(page['webSocketDebuggerUrl'],
-                                      max_size=10 * 1024 * 1024) as ws:
-            mid = 1
-
-            async def send(method, params=None):
-                nonlocal mid
-                m = {'id': mid, 'method': method}
-                if params:
-                    m['params'] = params
-                await ws.send(json.dumps(m))
-                while True:
-                    resp = json.loads(await ws.recv())
-                    if resp.get('id') == mid:
-                        mid += 1
-                        return resp
-
+        ws, send = await _cdp_session()
+        try:
             encoded = urllib.request.quote(query)
             await send('Page.navigate',
-                       {'url': f'https://s.taobao.com/search?q={encoded}'})
+                       {'url': f'https://s.taobao.com/search?q={encoded}&page={page}'})
             # 结果异步渲染，海外 IP 偶尔很慢——轮询等卡片出现，最多 ~36 秒
             for _ in range(12):
                 await asyncio.sleep(3)
@@ -122,6 +135,28 @@ def cmd_search(query):
                     'returnByValue': True})
                 if cnt['result']['result']['value'] > 5:
                     break
+            # 新版搜索页 URL 里的 page 参数不生效（改了也返回第一页），
+            # 翻页只能靠点「下一页」按钮，点一次翻一页
+            if page > 1:
+                next_js = r'''(() => {
+                    for (const e of document.querySelectorAll('button, a, span, div')) {
+                        const t = (e.innerText || '').trim();
+                        if (t.startsWith('下一页')) { e.click(); return true; }
+                    }
+                    return false;
+                })()'''
+                for _ in range(page - 1):
+                    r = await send('Runtime.evaluate',
+                                   {'expression': next_js, 'returnByValue': True})
+                    if not r['result']['result'].get('value'):
+                        break
+                    await asyncio.sleep(6)
+            # 想要的条数多时往下滚几轮，让懒加载把后面的卡片吐出来
+            if limit > 10:
+                for _ in range(4):
+                    await send('Runtime.evaluate',
+                               {'expression': 'window.scrollBy(0, document.body.scrollHeight)'})
+                    await asyncio.sleep(1.5)
 
             js = r'''(() => {
                 const links = document.querySelectorAll('a[href*="id="]');
@@ -137,25 +172,120 @@ def cmd_search(query):
                     const title = text.split('\n').find(
                         l => l.length > 10 && !l.startsWith('¥') && !/^\d/.test(l)) || '';
                     const priceMatch = text.match(/¥\s*(\d+\.?\d*)/);
+                    const salesMatch = text.match(/([\d.]+万?\+?)\s*人(?:付款|收货|加购)/);
                     const price = priceMatch ? priceMatch[1] : null;
                     const imgSrc = img ? img.src : null;
                     if (!price && !imgSrc) continue;   // 跳过账号昵称等无价无图的垃圾链接
                     items.push({id: m[1], title: title.trim().slice(0, 80),
-                                price: price, img: imgSrc});
-                    if (items.length >= 8) break;
+                                price: price, sales: salesMatch ? salesMatch[1] : null,
+                                img: imgSrc});
+                    if (items.length >= __LIMIT__) break;
                 }
                 return JSON.stringify(items);
-            })()'''
+            })()'''.replace('__LIMIT__', str(limit))
             r = await send('Runtime.evaluate',
                            {'expression': js, 'returnByValue': True})
             return json.loads(r['result']['result']['value'])
+        finally:
+            await ws.close()
 
     items = asyncio.run(_search())
     for it in items:
-        print(f"  id={it['id']}  ¥{it.get('price','?')}  {it.get('title','')[:60]}")
+        sales = f"  {it['sales']}人付款" if it.get('sales') else ''
+        print(f"  id={it['id']}  ¥{it.get('price','?')}{sales}  {it.get('title','')[:60]}")
         if it.get('img'):
             print(f"    img: {it['img'][:100]}")
     return items
+
+
+def cmd_detail(item_id, shot_path=None):
+    """打开商品详情页：抓标题 / 规格 / 页面文字摘要，外加整页截图（base64 PNG）。
+    海外 VPS 的 IP 在这一步可能吃滑块验证码——吃了就在返回里标 captcha=True，
+    这时换个候选，或把链接直接递给人看。返回 (info_dict, png_base64)。"""
+    import base64 as b64
+
+    async def _detail():
+        ws, send = await _cdp_session(max_size=20 * 1024 * 1024)
+        try:
+            await send('Page.navigate',
+                       {'url': f'https://item.taobao.com/item.htm?id={item_id}'})
+            for _ in range(6):
+                await asyncio.sleep(4)
+                got = await send('Runtime.evaluate', {
+                    'expression': 'document.body ? document.body.innerText.length : 0',
+                    'returnByValue': True})
+                if got['result']['result']['value'] > 500:
+                    break
+            info_js = r'''(() => {
+                const t = document.body ? document.body.innerText : '';
+                const captcha = /滑动验证|拖动滑块|安全验证|亲，请拖动/.test(t)
+                    || !!document.querySelector('#nocaptcha, .baxia-dialog, iframe[src*="punish"]');
+                const pick = sel => {
+                    const el = document.querySelector(sel);
+                    return el ? el.innerText.trim() : '';
+                };
+                const title = pick('h1')
+                    || pick('[class*="ItemTitle"], [class*="itemTitle"], [class*="mainTitle"]');
+                const sku = Array.from(document.querySelectorAll(
+                        '[class*="skuItem"], [class*="SkuContent"], [class*="valueItem"]'))
+                    .map(e => e.innerText.trim().replace(/\n/g, ' '))
+                    .filter(Boolean).slice(0, 40);
+                return JSON.stringify({captcha, title, sku, text: t.slice(0, 3000)});
+            })()'''
+            r = await send('Runtime.evaluate',
+                           {'expression': info_js, 'returnByValue': True})
+            info = json.loads(r['result']['result']['value'])
+            shot = await send('Page.captureScreenshot', {'format': 'png'})
+            png = shot.get('result', {}).get('data', '')
+            return info, png
+        finally:
+            await ws.close()
+
+    info, png_b64 = asyncio.run(_detail())
+    info['item_id'] = str(item_id)
+    info['url'] = f'https://item.taobao.com/item.htm?id={item_id}'
+    if shot_path and png_b64:
+        with open(shot_path, 'wb') as f:
+            f.write(b64.b64decode(png_b64))
+        print(f"截图已存：{shot_path}")
+    return info, png_b64
+
+
+def fetch_image(url, max_bytes=2 * 1024 * 1024):
+    """下载一张商品图（给 MCP 的 taobao_look 用）。返回 (bytes, format)。
+    alicdn 的搜索缩略图常带 `_.webp` 后缀，去掉就是原 jpg；原图太大时
+    追加 `_400x400q90.jpg` 让 CDN 出小图。"""
+    u = url.strip()
+    if u.startswith('//'):
+        u = 'https:' + u
+    if u.endswith('_.webp'):
+        u = u[:-len('_.webp')]
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://s.taobao.com/',
+    }
+
+    def _get(target):
+        req = urllib.request.Request(target, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return r.read(max_bytes + 1)
+
+    data = _get(u)
+    if len(data) > max_bytes and '_q90' not in u:
+        data = _get(u + '_400x400q90.jpg')
+    if len(data) > max_bytes:
+        raise ValueError(f"图片太大（>{max_bytes}B）：{u}")
+    if data[:3] == b'\xff\xd8\xff':
+        fmt = 'jpeg'
+    elif data[:8] == b'\x89PNG\r\n\x1a\n':
+        fmt = 'png'
+    elif data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        fmt = 'webp'
+    elif data[:6] in (b'GIF87a', b'GIF89a'):
+        fmt = 'gif'
+    else:
+        raise ValueError(f"下回来的不是图片（{data[:12]!r}）：{u}")
+    return data, fmt
 
 
 def cmd_add(item_id, quantity=1):
@@ -203,7 +333,14 @@ if __name__ == "__main__":
         sys.exit(0)
     cmd = sys.argv[1]
     if cmd == 'search':
-        cmd_search(sys.argv[2] if len(sys.argv) > 2 else '铅笔')
+        cmd_search(sys.argv[2] if len(sys.argv) > 2 else '铅笔',
+                   int(sys.argv[3]) if len(sys.argv) > 3 else 1,
+                   int(sys.argv[4]) if len(sys.argv) > 4 else 24)
+    elif cmd == 'detail':
+        info, _ = cmd_detail(sys.argv[2],
+                             sys.argv[3] if len(sys.argv) > 3 else None)
+        print(json.dumps({k: v for k, v in info.items() if k != 'text'},
+                         ensure_ascii=False, indent=1))
     elif cmd == 'add':
         cmd_add(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 1)
     elif cmd == 'buy':
